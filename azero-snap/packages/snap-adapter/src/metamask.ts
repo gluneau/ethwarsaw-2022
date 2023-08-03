@@ -35,7 +35,15 @@ export function requestSnap<T extends RpcParams, U>(
  */
 export const connect = async () => {
     try {
-        await request("wallet_enable", [{ wallet_snap: { [SNAP_ID]: {} } }]);
+        await request("wallet_requestPermissions", [{ wallet_snap: {
+            caveats: [
+              {
+                type: 'snapIds',
+                value: {
+                    'local:http://localhost:8081/': { version: '0.3.0' },
+                }
+              }]
+            }}]);
     } catch (error) {
         // The `wallet_enable` call will throw if the requested permissions are rejected.
         if ((error as any).code === 4001) {

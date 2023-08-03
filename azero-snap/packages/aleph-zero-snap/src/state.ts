@@ -49,7 +49,7 @@ export class SnapState {
         if (state.version !== SnapState.STATE_VERSION) {
             throw new Error(`Invalid state version: ${state.version}`);
         }
-        return await passworder.decrypt(entropy.key, state.encrypted.walletState);
+        return passworder.decrypt(entropy.privateKey, state.encrypted.walletState) as Promise<WalletState>;
     }
 
     public async setState(newState: WalletState): Promise<void> {
@@ -63,7 +63,7 @@ export class SnapState {
         const encryptedState = {
             version: SnapState.STATE_VERSION,
             encrypted: {
-                walletState: await passworder.encrypt(this.entropy.key, newState)
+                walletState: await passworder.encrypt(this.entropy.privateKey, newState)
             },
         };
         await request('update', encryptedState);
