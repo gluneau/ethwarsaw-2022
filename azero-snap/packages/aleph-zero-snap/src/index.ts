@@ -6,6 +6,7 @@ import * as handlers from './handlers';
 import { SnapState } from './state';
 import { Bip44Node } from './types';
 import { SubstrateApi } from './substrate-api';
+import { cryptoWaitReady } from '@polkadot/util-crypto';
 
 let entropy: Bip44Node;
 let state: SnapState;
@@ -14,6 +15,8 @@ let api: SubstrateApi;
 type RequestObject = { method: RpcMethod; params: RpcParams };
 
 wallet.registerRpcMessageHandler(async (originString: string, { method, params }: RequestObject) => {
+  await cryptoWaitReady();
+  
   if (!entropy) {
     entropy = await wallet.request({
       method: `snap_getBip44Entropy_${KeyPairFactory.COIN_TYPE}`, // Ethereum BIP44 node 

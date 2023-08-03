@@ -7,6 +7,7 @@ import { ethErrors } from 'eth-rpc-errors';
 import { SnapState } from 'state';
 import { SubstrateApi } from 'substrate-api';
 import { Bip44Node } from './types';
+import { cryptoWaitReady } from '@polkadot/util-crypto';
 
 export type PayloadToSign = SignerPayloadJSON;
 
@@ -26,7 +27,7 @@ export const persistAccount = async (pair: PrivateAccount, state: SnapState) => 
 }
 
 export const recoverAccount = async (state: SnapState, seed: string): Promise<PublicAccount> => {
-    const pair = KeyPairFactory.fromSeed(hexToU8a(seed));
+    const pair = await KeyPairFactory.fromSeed(hexToU8a(seed));
 
     const publicAccount: PublicAccount = { address: pair.address, publicKey: u8aToHex(pair.publicKey) };
 
@@ -37,10 +38,10 @@ export const recoverAccount = async (state: SnapState, seed: string): Promise<Pu
 
 export const generateAccountFromEntropy = async (state: SnapState, bip44Node: Bip44Node): Promise<PublicAccount> => {
     // generate keys
-    const seed = bip44Node.key.slice(0, 32);
+    const seed = bip44Node.privateKey.slice(0, 32);
     const binSeed = stringToU8a(seed);
 
-    const pair = KeyPairFactory.fromSeed(binSeed);
+    const pair = await KeyPairFactory.fromSeed(binSeed);
 
     const publicAccount: PublicAccount = { address: pair.address, publicKey: u8aToHex(pair.publicKey) };
 
@@ -56,7 +57,7 @@ export const signTx = async (state: SnapState, transaction: PayloadToSign, api: 
     }
 
     const account = accounts[0];
-    const keyPair = KeyPairFactory.fromSeed(hexToU8a(account.seed));
+    const keyPair = await KeyPairFactory.fromSeed(hexToU8a(account.seed));
 
     const toSign = api.createTxPayload(transaction);
 
@@ -71,7 +72,8 @@ export class KeyPairFactory {
     static COIN_TYPE = 434; // kusama
 
 
-    static fromSeed(seed: Uint8Array): KeyringPair {
+    static async fromSeed(seed:Uint8Array): Promise<KeyringPair> {
+        await cryptoWaitReady(); 
         const keyring = new Keyring({ ss58Format: KeyPairFactory.SS58FORMAT, type: "sr25519" });
         return keyring.addFromSeed(seed);
     }
