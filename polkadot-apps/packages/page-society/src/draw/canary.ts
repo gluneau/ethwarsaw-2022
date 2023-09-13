@@ -1,4 +1,4 @@
-// Copyright 2017-2022 @polkadot/app-society authors & contributors
+// Copyright 2017-2023 @polkadot/app-society authors & contributors
 // SPDX-License-Identifier: Apache-2.0
 
 // Adapted (wih permission) from https://www.w3schools.com/code/tryit.asp?filename=GGIGKE2GG7N1
@@ -81,9 +81,9 @@ function tattooSpiro (ctx: CanvasRenderingContext2D, bits: boolean[]): void {
 
   let radius = 0.5 - dot;
 
-  for (let i = 0; i < bits.length; i++) {
-    radius -= 0.5 / bits.length * limit / (radius * 4);
-    ctx.rotate(Math.PI * 2 / bits.length * cycles / (radius * 4));
+  for (let i = 0, count = bits.length; i < count; i++) {
+    radius -= 0.5 / count * limit / (radius * 4);
+    ctx.rotate(Math.PI * 2 / count * cycles / (radius * 4));
     ctx.save();
     ctx.translate(0, -radius);
     ctx.beginPath();

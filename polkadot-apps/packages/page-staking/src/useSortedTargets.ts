@@ -1,16 +1,16 @@
-// Copyright 2017-2022 @polkadot/app-staking authors & contributors
+// Copyright 2017-2023 @polkadot/app-staking authors & contributors
 // SPDX-License-Identifier: Apache-2.0
 
 import type { ApiPromise } from '@polkadot/api';
 import type { DeriveSessionInfo, DeriveStakingElected, DeriveStakingWaiting } from '@polkadot/api-derive/types';
 import type { Inflation } from '@polkadot/react-hooks/types';
 import type { Option, u32 } from '@polkadot/types';
-import type { SortedTargets, TargetSortBy, ValidatorInfo } from './types';
+import type { SortedTargets, TargetSortBy, ValidatorInfo } from './types.js';
 
 import { useMemo } from 'react';
 
 import { createNamedHook, useAccounts, useApi, useCall, useCallMulti, useInflation } from '@polkadot/react-hooks';
-import { arrayFlatten, BN, BN_ONE, BN_ZERO } from '@polkadot/util';
+import { arrayFlatten, BN, BN_HUNDRED, BN_MAX_INTEGER, BN_ONE, BN_ZERO } from '@polkadot/util';
 
 interface LastEra {
   activeEra: BN;
@@ -199,15 +199,19 @@ function extractSingle (api: ApiPromise, allAccounts: string[], derive: DeriveSt
 }
 
 function addReturns (inflation: Inflation, baseInfo: Partial<SortedTargets>): Partial<SortedTargets> {
+  const avgStaked = baseInfo.avgStaked;
   const validators = baseInfo.validators;
 
   if (!validators) {
     return baseInfo;
   }
 
-  validators.forEach((v): void => {
+  avgStaked && !avgStaked.isZero() && validators.forEach((v): void => {
     if (!v.skipRewards && v.withReturns) {
-      v.stakedReturn = inflation.stakedReturn;
+      const adjusted = avgStaked.mul(BN_HUNDRED).imuln(inflation.stakedReturn).div(v.bondTotal);
+
+      // in some cases, we may have overflows... protect against those
+      v.stakedReturn = (adjusted.gt(BN_MAX_INTEGER) ? BN_MAX_INTEGER : adjusted).toNumber() / BN_HUNDRED.toNumber();
       v.stakedReturnCmp = v.stakedReturn * (100 - v.commissionPer) / 100;
     }
   });
@@ -286,7 +290,7 @@ function useSortedTargetsImpl (favorites: string[], withLedger: boolean): Sorted
 
   const baseInfo = useMemo(
     () => electedInfo && lastEraInfo && totalIssuance && waitingInfo
-      ? extractBaseInfo(api, allAccounts, electedInfo, waitingInfo, favorites, totalIssuance, lastEraInfo, historyDepth)
+      ? extractBaseInfo(api, allAccounts, electedInfo, waitingInfo, favorites, totalIssuance, lastEraInfo, api.consts.staking.historyDepth || historyDepth)
       : EMPTY_PARTIAL,
     [api, allAccounts, electedInfo, favorites, historyDepth, lastEraInfo, totalIssuance, waitingInfo]
   );
@@ -297,7 +301,7 @@ function useSortedTargetsImpl (favorites: string[], withLedger: boolean): Sorted
     (): SortedTargets => ({
       counterForNominators,
       counterForValidators,
-      historyDepth,
+      historyDepth: api.consts.staking.historyDepth || historyDepth,
       inflation,
       maxNominatorsCount,
       maxValidatorsCount,
@@ -306,12 +310,12 @@ function useSortedTargetsImpl (favorites: string[], withLedger: boolean): Sorted
       minNominatorBond,
       minValidatorBond,
       ...(
-        inflation && inflation.stakedReturn
+        inflation?.stakedReturn
           ? addReturns(inflation, baseInfo)
           : baseInfo
       )
     }),
-    [baseInfo, counterForNominators, counterForValidators, historyDepth, inflation, maxNominatorsCount, maxValidatorsCount, minNominatorBond, minValidatorBond]
+    [api, baseInfo, counterForNominators, counterForValidators, historyDepth, inflation, maxNominatorsCount, maxValidatorsCount, minNominatorBond, minValidatorBond]
   );
 }
 
