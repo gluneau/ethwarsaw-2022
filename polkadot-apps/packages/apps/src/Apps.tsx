@@ -1,140 +1,75 @@
-// Copyright 2017-2022 @polkadot/apps authors & contributors
+// Copyright 2017-2023 @polkadot/apps authors & contributors
 // SPDX-License-Identifier: Apache-2.0
 
-import type { BareProps as Props, ThemeDef } from '@polkadot/react-components/types';
-import { keyring } from '@polkadot/ui-keyring';
+import type { BareProps as Props } from '@polkadot/react-components/types';
 
-import React, { useContext, useEffect, useMemo, useState } from 'react';
-import styled, { ThemeContext } from 'styled-components';
+import React, { useMemo } from 'react';
 
-import AccountSidebar from '@polkadot/app-accounts/Sidebar';
-import { getSystemColor } from '@polkadot/apps-config';
+import { AccountSidebar, styled } from '@polkadot/react-components';
 import GlobalStyle from '@polkadot/react-components/styles';
-import { useApi } from '@polkadot/react-hooks';
+import { useApi, useTheme } from '@polkadot/react-hooks';
 import Signer from '@polkadot/react-signer';
 
-import * as snap from "snap-adapter";
-
-import ConnectingOverlay from './overlays/Connecting';
-import Content from './Content';
-import Menu from './Menu';
-import WarmUp from './WarmUp';
+import Content from './Content/index.js';
+import Menu from './Menu/index.js';
+import ConnectingOverlay from './overlays/Connecting.js';
+import DotAppsOverlay from './overlays/DotApps.js';
+import WarmUp from './WarmUp.js';
 
 export const PORTAL_ID = 'portals';
 
-function Apps({ className = '' }: Props): React.ReactElement<Props> {
-  const { theme } = useContext(ThemeContext as React.Context<ThemeDef>);
-  const { isDevelopment, specName, systemChain, systemName } = useApi();
-
-
-  const [snapConnected, setSnapConnected] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [seed, setSeed] = useState("");
+function Apps ({ className = '' }: Props): React.ReactElement<Props> {
+  const { themeClassName } = useTheme();
+  const { apiEndpoint, isDevelopment } = useApi();
 
   const uiHighlight = useMemo(
     () => isDevelopment
       ? undefined
-      : getSystemColor(systemChain, systemName, specName),
-    [isDevelopment, specName, systemChain, systemName]
+      : apiEndpoint?.ui.color,
+    [apiEndpoint, isDevelopment]
   );
-
-  useEffect(() => {
-    const connectSnap = async () => {
-      const isEnabled =  (await snap.getAccounts()).length > 0;
-      setLoading(isEnabled);
-      setSnapConnected(isEnabled);
-    }
-    connectSnap().catch(console.error);
-  }, []);
-
-  const doConnectSnap = async () => {
-    setLoading(true);
-    setSnapConnected(false);
-    try {
-      await snap.connect();
-      setSnapConnected(true);
-      let accounts = await snap.getAccounts();
-
-      if (accounts.length < 1) {
-          if(seed === "") {
-            const account = await snap.generateNewAccount();
-            keyring.addExternal(account.address);
-            
-          } else {
-            const account = await snap.getAccountFromSeed(seed);
-            keyring.addExternal(account.address);
-          }
-        }
-
-
-    } catch (e) {
-      console.error(e);
-    }
-    setLoading(false);
-  };
 
   return (
     <>
       <GlobalStyle uiHighlight={uiHighlight} />
-      <div className={`apps--Wrapper theme--${theme} ${className}`}>
-        {!snapConnected && (
-          <>
-            <h1>Connect and install snap</h1>
-            <p>
-              New Aleph Zero account will be automatically created from your MetaMask private key.
-            </p>
-            <p>
-              Please take a not of snap permission, that you will be asked for.
-            </p>
-            <p>
-              Note: We recommend using a throw-away MetaMask account.
-            </p>
-            <p>
-              This demo uses MetaMask flask (canary release). In order to use it, please follow installation instructions in readme: https://github.com/piotr-roslaniec/ethwarsaw-2022/tree/docs#installing-metamask-flask.
-            </p>
-            {loading && <p>Loading...</p>}
-              {!loading &&
-              <div>
-              <div>
-                <input height={"40px"} placeholder={'seed in hex (optional)'} onChange={(e) => setSeed(e.target.value)}></input>
-              </div>
-              <div>
-              <button
-                disabled={snapConnected}
-                onClick={doConnectSnap}
-              >
-                Create account
-              </button>
-              </div>
-              </div>}
-          </>
-        )}
-        {snapConnected && (
-          <>                  <Menu />
-            <AccountSidebar>
-              <Signer>
-                <Content />
-              </Signer>
-              <ConnectingOverlay />
-              <div id={PORTAL_ID} />
-            </AccountSidebar>
-          </>
-
-        )}
-      </div>
+      <StyledDiv className={`${className} apps--Wrapper ${themeClassName}`}>
+        <Menu />
+        <AccountSidebar>
+          <Signer>
+            <Content />
+          </Signer>
+          <ConnectingOverlay />
+          <DotAppsOverlay />
+          <div id={PORTAL_ID} />
+        </AccountSidebar>
+      </StyledDiv>
       <WarmUp />
     </>
   );
 }
 
-export default React.memo(styled(Apps)`
+const StyledDiv = styled.div`
   background: var(--bg-page);
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
   min-height: 100vh;
 
-  .--hidden {
-    display: none;
-  }
-`);
+  ${[
+    0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
+    10, 11, 12, 13, 14, 15, 16, 17, 18, 19,
+    20, 21, 22, 23, 24
+  ].map((n) => `
+    .greyAnim-${n} {
+      animation: greyAnim${n} 2s;
+    }
+
+    @keyframes greyAnim${n} {
+      0% { background: #a6a6a6; }
+      50% { background: darkorange; }
+      100% { background: #a6a6a6; }
+    }
+  `).join('')}
+`;
+
+export default React.memo(Apps);

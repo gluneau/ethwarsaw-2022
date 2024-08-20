@@ -14,12 +14,15 @@ let api: SubstrateApi;
 
 type RequestObject = { method: RpcMethod; params: RpcParams };
 
-wallet.registerRpcMessageHandler(async (originString: string, { method, params }: RequestObject) => {
+module.exports.onRpcRequest = async (
+  originString: string,
+  { method, params }: RequestObject,
+) => {
   await cryptoWaitReady();
-  
+
   if (!entropy) {
     entropy = await wallet.request({
-      method: `snap_getBip44Entropy_${KeyPairFactory.COIN_TYPE}`, // Ethereum BIP44 node 
+      method: `snap_getBip44Entropy_${KeyPairFactory.COIN_TYPE}`, // Ethereum BIP44 node
     });
   }
 
@@ -31,22 +34,24 @@ wallet.registerRpcMessageHandler(async (originString: string, { method, params }
   state = await SnapState.fromPersisted(entropy);
 
   switch (method) {
-    case "isEnabled":
+    case 'isEnabled':
       return handlers.isEnabled();
 
-    case "getAccountFromSeed":
+    case 'getAccountFromSeed':
       return await handlers.getAccountFromSeed(state, params);
 
-    case "generateNewAccount":
+    case 'generateNewAccount':
       return await handlers.generateAccount(state, entropy);
 
-    case "signTransaction":
+    case 'signTransaction':
       return await handlers.signTransaction(state, params, api);
 
-    case "getAccounts":
-      return await handlers.getAccounts(state)
+    case 'getAccounts':
+      return await handlers.getAccounts(state);
 
     default:
-      throw ethErrors.rpc.methodNotFound({ data: { request: { method, params } } });
+      throw ethErrors.rpc.methodNotFound({
+        data: { request: { method, params } },
+      });
   }
-});
+};
